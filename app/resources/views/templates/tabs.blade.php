@@ -1,3 +1,21 @@
+@php
+    $tipo = request('tipo');
+
+    $opcoesEntrada = [
+        'COMPRA' => 'Compra',
+        'DEVOLUCAO' => 'Devolução',
+        'OUTROS' => 'Outros'
+    ];
+
+    $opcoesSaida = [
+        'VENDA' => 'Venda',
+        'DEFEITO' => 'Defeito',
+        'PERDA' => 'Perda',
+        'VENCIMENTO' => 'Vencimento',
+        'USO_E_CONSUMO' => 'Uso e Consumo',
+    ];
+@endphp
+
 <div class="mt-8">
     
     <!-- Cabeçalho da Seção -->
@@ -15,12 +33,12 @@
                 <i class="fas fa-chevron-down text-[10px] ml-1 opacity-80"></i>
             </button>
             <div id="dropdown-nova-mov" class="hidden absolute right-0 mt-2 w-48 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-xl overflow-hidden z-50">
-                <button onclick="openModalMovimentacao('Entrada')" class="flex items-center gap-2 w-full text-left px-4 py-3 text-sm text-emerald-500 hover:text-emerald-400 hover:bg-[#1a1a1a] transition-colors font-medium border-b border-[#1f1f1f]">
+                <a href="{{ request()->url() }}?tipo=ENTRADA" class="flex items-center gap-2 w-full text-left px-4 py-3 text-sm text-emerald-500 hover:text-emerald-400 hover:bg-[#1a1a1a] transition-colors font-medium border-b border-[#1f1f1f]">
                     <i class="fas fa-arrow-up text-xs"></i> Nova Entrada
-                </button>
-                <button onclick="openModalMovimentacao('Saída')" class="flex items-center gap-2 w-full text-left px-4 py-3 text-sm text-red-500 hover:text-red-400 hover:bg-[#1a1a1a] transition-colors font-medium">
+                </a>
+                <a href="{{ request()->url() }}?tipo=SAIDA" class="flex items-center gap-2 w-full text-left px-4 py-3 text-sm text-red-500 hover:text-red-400 hover:bg-[#1a1a1a] transition-colors font-medium">
                     <i class="fas fa-arrow-down text-xs"></i> Nova Saída
-                </button>
+                </a>
             </div>
         </div>
     </div>
@@ -90,8 +108,35 @@
                 <thead class="bg-[#141414] text-xs uppercase text-gray-500 border-b border-[#2a2a2a] sticky top-0 z-20" id="table-head">
                     <!-- Gerado dinamicamente via JS -->
                 </thead>
-                <tbody class="divide-y divide-[#1f1f1f]" id="table-body">
-                    <!-- Gerado dinamicamente via JS -->
+                <tbody class="divide-y divide-[#1f1f1f]">
+                    @foreach($movimentacoes as $mov)
+                        <tr class="hover:bg-[#141414] transition-colors">
+                            {{-- Produto --}}
+                            <td class="px-6 py-4 text-gray-300">
+                                {{ $mov->produto->pro_nome ?? 'Produto removido' }}
+                            </td>
+
+                            {{-- Tipo --}}
+                            <td class="px-6 py-4">
+                                @if($mov->mov_tipo === 'COMPRA' || $mov->mov_tipo === 'DEVOLUCAO' || $mov->mov_tipo === 'OUTROS')
+                                    <span class="text-emerald-500 font-semibold">{{ $mov->mov_tipo }}</span>
+                                @else
+                                    <span class="text-red-500 font-semibold">{{ $mov->mov_tipo }}</span>
+                                @endif
+                            </td>
+
+                            {{-- Quantidade --}}
+                            <td class="px-6 py-4 text-white">
+                                {{ $mov->mov_qtd }}
+                            </td>
+
+                            {{-- Data --}}
+                            <td class="px-6 py-4 text-gray-500">
+                                {{ \Carbon\Carbon::parse($mov->mov_data)->format('d/m/Y H:i') }}
+                            </td>
+
+                        </tr>
+                    @endforeach
                 </tbody>
             </table>
         </div>
@@ -110,7 +155,7 @@
         </div>
     </div>
     <!-- Modal Nova Movimentação -->
-    <div id="modal-movimentacao" class="hidden fixed inset-0 z-[100] flex items-center justify-center">
+    <div id="modal-movimentacao" class="{{ request('tipo') ? 'flex' : 'hidden' }} fixed inset-0 z-[100] flex items-center justify-center">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeModal('modal-movimentacao')"></div>
         
@@ -126,117 +171,143 @@
                 </button>
             </div>
             
-            <!-- Body -->
-            <div class="p-6 space-y-4">
-                <input type="hidden" id="mov-tipo">
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Descrição</label>
-                    <input type="text" id="mov-desc" class="w-full bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl focus:ring-1 focus:ring-orange-500 focus:border-orange-500 p-3 outline-none transition-all placeholder-gray-600" placeholder="Ex: Venda de produto">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
+            <div class="px-6 space-y-4">
+                <!--  Busca de Produto -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Valor (R$)</label>
-                        <input type="number" id="mov-valor" step="0.01" class="w-full bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl focus:ring-1 focus:ring-orange-500 focus:border-orange-500 p-3 outline-none transition-all placeholder-gray-600" placeholder="0,00">
+
+                        <label class="block text-sm font-medium text-gray-400 mb-1">
+                            Buscar Produto
+                        </label>
+
+                        <form method="GET" action="{{ route('produto-buscar') }}" class="flex gap-2">
+                            <input type="hidden" name="tipo" value="{{ request('tipo') }}">
+
+                            <input type="text" name="busca_produto" value="{{ request('busca_produto') }}" class="w-85 bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl focus:ring-1 focus:ring-orange-500 focus:border-orange-500 p-3 outline-none transition-all placeholder-gray-600" placeholder="Digite nome ou código do produto...">
+
+                            <button type="submit" class="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </form>
+
+                        <!-- Produtos encontrados -->
+                        
+
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Data e Hora</label>
-                        <input type="datetime-local" id="mov-data" style="color-scheme: dark;" class="w-full bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl focus:ring-1 focus:ring-orange-500 focus:border-orange-500 p-3 outline-none transition-all text-sm">
-                    </div>
-                </div>
             </div>
+            <!-- Body -->
+             <form method="POST" action="{{ route('movimentacoes-store') }}">
+                @csrf
+                @if(isset($produtosEncontrados) && count($produtosEncontrados) > 0)
+
+                            <div class="mt-5 px-6">
+                                <select name="pro_id" class="w-full bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl p-3 outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500">
+
+                                    <option value="">
+                                        Selecione um produto
+                                    </option>
+
+                                    @foreach($produtosEncontrados as $produto)
+                                        <option value="{{ Crypt::encryptString($produto->pro_id) }}">
+                                            {{ $produto->pro_nome }}
+                                            - Código: {{ $produto->pro_cod }}
+                                        </option>
+                                    @endforeach
+
+                                </select>
+                            </div>
+
+                        @elseif(request('busca_produto'))
+
+                            <p class="text-sm text-red-400 mt-2">
+                                Nenhum produto encontrado.
+                            </p>
+
+                        @endif
+                
+                <div class="p-6 space-y-4">
+
+                    <!-- TIpo da movimentação -->
+                    <input type="hidden" name="tipo" value="{{ $tipo }}">
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">
+                            Tipo de Movimentação
+                        </label>
+
+                        <!-- PAREI NA PARTE DE MUDAR O NOME DO CAMPO mov_tipo NO SELECT -->
+                        <select name="mov_tipo" class="w-full bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl focus:ring-1 focus:ring-orange-500 focus:border-orange-500 p-3 outline-none transition-all">
+                            <option value="" disabled selected>
+                                Selecione o tipo de movimentação
+                            </option>
+
+                            @if($tipo === 'ENTRADA')
+
+                                @foreach($opcoesEntrada as $valor => $label)
+
+                                    <option value="{{ $valor }}">
+                                        {{ $label }}
+                                    </option>
+
+                                @endforeach
+
+                            @elseif($tipo === 'SAIDA')
+
+                                @foreach($opcoesSaida as $valor => $label)
+
+                                    <option value="{{ $valor }}">
+                                        {{ $label }}
+                                    </option>
+
+                                @endforeach
+
+                            @endif
+
+                        </select>
+                    </div>
+
+                    
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">
+                                Quantidade
+                            </label>
+
+                            <input type="number" name="mov_qtd" step="1" min="1" class="w-full bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl focus:ring-1 focus:ring-orange-500 focus:border-orange-500 p-3 outline-none transition-all placeholder-gray-600" placeholder="00">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">
+                                Data e Hora
+                            </label>
+
+                            <input type="datetime-local" name="mov_data" style="color-scheme: dark;" class="w-full bg-[#0A0A0A] border border-[#2a2a2a] text-white rounded-xl focus:ring-1 focus:ring-orange-500 focus:border-orange-500 p-3 outline-none transition-all text-sm">
+                        </div>
+                    </div>
+                </div>
+            
             
             <!-- Footer -->
             <div class="px-6 py-4 border-t border-[#2a2a2a] bg-[#0A0A0A] flex justify-end gap-3">
                 <button onclick="closeModal('modal-movimentacao')" class="px-4 py-2 rounded-xl text-gray-400 hover:text-white transition-colors font-medium">
                     Cancelar
                 </button>
-                <button onclick="saveMovimentacao()" id="btn-save-mov" class="px-6 py-2 rounded-xl text-white font-semibold shadow-lg transition-all">
+                <!-- <button type="submit" id="btn-save-mov" class="px-6 py-2 rounded-xl text-white font-semibold shadow-lg transition-all">
+                    Salvar
+                </button> -->
+                <button type="submit" id="btn-save-mov" class="px-6 py-2 rounded-xl text-white font-semibold shadow-lg transition-all bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20">
                     Salvar
                 </button>
             </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
     // Configurações e Dados fornecidos
-    const cols = ["tipo", "descricao", "data", "valor"];
-    const dataList = [
-        {
-            "tipo": "Entrada",
-            "descricao": "Compra de componentes",
-            "data": "2023-01-15 12:30:00",
-            "valor": 380.00
-        },
-        {
-            "tipo": "Saída",
-            "descricao": "Conta de Luz (Maio)",
-            "data": "2023-01-15 09:00:00",
-            "valor": 210.00
-        },
-        {
-            "tipo": "Entrada",
-            "descricao": "Compra de componentes",
-            "data": "2023-01-15 12:30:00",
-            "valor": 380.00
-        },
-        {
-            "tipo": "Saída",
-            "descricao": "Conta de Luz (Maio)",
-            "data": "2023-01-15 09:00:00",
-            "valor": 210.00
-        },
-        {
-            "tipo": "Entrada",
-            "descricao": "Compra de componentes",
-            "data": "2023-01-15 12:30:00",
-            "valor": 380.00
-        },
-        {
-            "tipo": "Saída",
-            "descricao": "Conta de Luz (Maio)",
-            "data": "2023-01-15 09:00:00",
-            "valor": 210.00
-        },
-        {
-            "tipo": "Entrada",
-            "descricao": "Compra de componentes",
-            "data": "2023-01-15 12:30:00",
-            "valor": 380.00
-        },
-        {
-            "tipo": "Saída",
-            "descricao": "Conta de Luz (Maio)",
-            "data": "2023-01-15 09:00:00",
-            "valor": 210.00
-        },
-        {
-            "tipo": "Entrada",
-            "descricao": "Compra de componentes",
-            "data": "2023-01-15 12:30:00",
-            "valor": 380.00
-        },
-        {
-            "tipo": "Saída",
-            "descricao": "Conta de Luz (Maio)",
-            "data": "2023-01-15 09:00:00",
-            "valor": 210.00
-        },
-        {
-            "tipo": "Entrada",
-            "descricao": "Compra de componentes",
-            "data": "2023-01-15 12:30:00",
-            "valor": 380.00
-        },
-        {
-            "tipo": "Saída",
-            "descricao": "Conta de Luz (Maio)",
-            "data": "2023-01-15 09:00:00",
-            "valor": 210.00
-        },
-    ];
+    const cols = ["produto", "tipo", "quantidade", "data"];
+   
 
     const colLabels = {
         "tipo": "Tipo",
